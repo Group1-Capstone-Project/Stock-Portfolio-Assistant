@@ -1,0 +1,1 @@
+This folder src\app is the frontend Here we will build the frontend
