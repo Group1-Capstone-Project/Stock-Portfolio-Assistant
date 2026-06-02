@@ -1,3 +1,4 @@
+// this is the user controller that will be used to handle the user logic except for the database interactions, which are handled by the user service but still should pass through the controller for any additional logic or validation before reaching the service
 import { NextRequest, NextResponse } from "next/server";
 import { userService } from "@/services/user_service";
 

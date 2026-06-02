@@ -1,3 +1,4 @@
+//this is where the user service is defined, it contains the functions to interact with the database for the user data
 import { prisma } from "@/lib/prisma";
 
 export const userService = {

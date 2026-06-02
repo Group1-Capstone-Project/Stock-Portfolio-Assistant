@@ -1,3 +1,4 @@
+// this are the getters and setters for the user data
 export interface User {
   id: string;
   name: string;
