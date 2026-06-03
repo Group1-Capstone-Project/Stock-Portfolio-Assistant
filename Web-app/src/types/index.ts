@@ -1,0 +1,2 @@
+//this file is for defining TypeScript types that are used throughout the application. It re-exports types from the Prisma client, which are generated based on the database schema. This allows us to use these types in our controllers, services, and other parts of the application without having to import them directly from the Prisma client each time. By centralizing our type definitions in this file, we can maintain better organization and consistency across our codebase.
+export type { User, Holding, Transaction } from "@prisma/client";
