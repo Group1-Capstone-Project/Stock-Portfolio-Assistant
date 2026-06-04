@@ -32,7 +32,8 @@ Completed work:
 - Created the hosted PostgreSQL database through Neon
 - Configured Prisma to connect to the database
 - Created and synchronized the initial database schema
-- Added Finnhub API support through a backend route
+- Added Finnhub API support through backend routes for stock quotes, search, batch quotes, and historical price data
+- Extracted shared Finnhub client utility to support all API routes
 - Successfully tested stock quote retrieval using ticker symbols such as `AAPL`
 
 Still in development:
@@ -45,15 +46,18 @@ Still in development:
 - Charts and portfolio analytics
 - Final deployment
 
-## Current Finnhub API Route
+## Finnhub API Routes
 
-The application currently includes a backend API route for retrieving stock quote data through Finnhub.
+The application includes backend API routes for retrieving stock market data through Finnhub. The Finnhub API key is stored in a local environment file and accessed only through these backend routes. It is not exposed in frontend browser code.
 
 ```text
 GET /api/quote?symbol=AAPL
+GET /api/search?q=apple
+GET /api/quote/batch?symbols=AAPL,MSFT,GOOG
+GET /api/history?symbol=AAPL&period=1M
 ```
 
-The route returns formatted quote information including:
+The quote route returns formatted quote information including:
 
 - Current stock price
 - Daily price change
@@ -63,7 +67,11 @@ The route returns formatted quote information including:
 - Previous closing price
 - Quote timestamp
 
-The Finnhub API key is stored in a local environment file and accessed only through the backend route. It is not exposed in frontend browser code.
+The search route returns a list of matching stocks and securities including symbol, display symbol, company name, and security type.
+
+The batch route returns quote data for up to 20 comma-separated symbols in a single request. Symbols that are not found are included in the response with a `notFound` flag rather than failing the entire request.
+
+The history route returns OHLCV (open, high, low, close, volume) candle data for a given symbol and time period. Supported periods are `1D`, `1W`, `1M`, `3M`, and `1Y`.
 
 ## Database
 
