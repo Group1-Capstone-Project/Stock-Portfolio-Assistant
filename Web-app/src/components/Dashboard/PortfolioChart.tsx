@@ -25,6 +25,7 @@ export default function PortfolioChart({ holdings }: PortfolioChartProps) {
         }
 
         groups[holding.ticker].value += holding.shares * holding.price;
+
         return groups;
       },
       {}
@@ -36,7 +37,9 @@ export default function PortfolioChart({ holdings }: PortfolioChartProps) {
       <h2 className="mb-4 text-xl font-semibold">Portfolio Allocation</h2>
 
       <div className="h-72 min-h-72">
-        <ResponsiveContainer width="100%" height="100%">
+        {/* minWidth and minHeight prevent Recharts from calculating a negative
+            container size during the production build/prerender step */}
+        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
           <PieChart>
             <Pie
               data={chartData}

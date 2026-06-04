@@ -21,7 +21,10 @@ export default function PortfolioHistoryChart({
     (total, holding) => total + holding.shares * holding.price,
     0
   );
-//hard coded historical data for demo purposes
+
+  // temporary chart data
+  // this keeps the chart functional until real portfolio snapshots
+  // are connected from the database
   const chartData = [
     { date: "Day 1", value: currentValue * 0.94 },
     { date: "Day 5", value: currentValue * 0.96 },
@@ -37,7 +40,9 @@ export default function PortfolioHistoryChart({
       <h2 className="mb-4 text-xl font-semibold">30-Day Portfolio History</h2>
 
       <div className="h-72 min-h-72">
-        <ResponsiveContainer width="100%" height="100%">
+        {/* minWidth and minHeight prevent Recharts from calculating a negative
+            container size during the production build/prerender step */}
+        <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
           <LineChart data={chartData}>
             <XAxis dataKey="date" />
             <YAxis />

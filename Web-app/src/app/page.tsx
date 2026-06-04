@@ -5,13 +5,26 @@ import type { Holding } from "@/types/portfolio";
 import DashboardSummary from "@/components/Dashboard/DashboardSummary";
 import HoldingsTable from "@/components/Dashboard/HoldingsTable";
 import AddHoldingForm from "@/components/Dashboard/AddHoldingForm";
-import PortfolioChart from "@/components/Dashboard/PortfolioChart";
-import PortfolioHistoryChart from "@/components/Dashboard/PortfolioHistoryChart";
 import { holdings as mockHoldings } from "@/data/mockPortfolio";
 
 // this helper calls our own backend route at /api/quote/batch
 // the frontend does not call Finnhub directly
 import { getBatchQuotes, isValidQuote } from "@/lib/stockApi";
+
+import dynamic from "next/dynamic";
+
+// recharts should only render in the browser because it needs real container dimensions
+// this keeps the chart components unchanged but prevents chart sizing
+// warnings during build/prerender
+const PortfolioChart = dynamic(
+  () => import("@/components/Dashboard/PortfolioChart"),
+  { ssr: false }
+);
+
+const PortfolioHistoryChart = dynamic(
+  () => import("@/components/Dashboard/PortfolioHistoryChart"),
+  { ssr: false }
+);
 
 export default function DashboardPage() {
   const [holdings, setHoldings] = useState<Holding[]>(mockHoldings);
@@ -25,8 +38,10 @@ export default function DashboardPage() {
   // when the dashboard first loads, this requests updated prices for the
   // current mock holdings and replaces the temporary hardcoded price values
   useEffect(() => {
-    async function refreshPrices() {
-      const symbols = holdings.map((holding) => holding.ticker);
+    async function refreshInitialPrices() {
+      // use the initial mock holdings here instead of the holdings state
+      // this prevents the effect from rerunning every time setHoldings updates prices
+      const symbols = mockHoldings.map((holding) => holding.ticker);
 
       if (symbols.length === 0) {
         return;
@@ -65,7 +80,7 @@ export default function DashboardPage() {
       }
     }
 
-    refreshPrices();
+    refreshInitialPrices();
   }, []);
 
   function addHolding(newHolding: Holding) {
