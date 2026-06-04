@@ -1,24 +1,35 @@
-//this route is for handling requests to /api/holdings/:id, where :id is the id of a specific holding. It supports GET, PUT, and DELETE methods for retrieving, updating, and deleting a holding respectively.
+// handles requests for a specific holding ID
+// Next.js 16 treats route params as a Promise, so params must be awaited before reading id
+
 import { NextRequest } from "next/server";
 import { holdingController } from "@/controllers/holdings_controller";
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  return holdingController.getOne(req, params.id);
+type HoldingRouteContext = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+// GET /api/holdings/:id
+// retrieves one holding by ID
+export async function GET(req: NextRequest, { params }: HoldingRouteContext) {
+  const { id } = await params;
+
+  return holdingController.getOne(req, id);
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  return holdingController.update(req, params.id);
+// PUT /api/holdings/:id
+// updates one holding by ID
+export async function PUT(req: NextRequest, { params }: HoldingRouteContext) {
+  const { id } = await params;
+
+  return holdingController.update(req, id);
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  return holdingController.delete(req, params.id);
+// DELETE /api/holdings/:id
+// deletes one holding by ID
+export async function DELETE(req: NextRequest, { params }: HoldingRouteContext) {
+  const { id } = await params;
+
+  return holdingController.delete(req, id);
 }
