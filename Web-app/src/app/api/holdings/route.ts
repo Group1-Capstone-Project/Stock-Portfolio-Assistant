@@ -5,7 +5,3 @@ import { holdingController } from "@/controllers/holdings_controller";
 export async function GET(req: NextRequest) {
   return holdingController.getAll(req);
 }
-
-export async function POST(req: NextRequest) {
-  return holdingController.create(req);
-}

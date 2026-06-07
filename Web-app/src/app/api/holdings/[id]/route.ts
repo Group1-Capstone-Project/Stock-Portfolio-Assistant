@@ -25,11 +25,3 @@ export async function PUT(req: NextRequest, { params }: HoldingRouteContext) {
 
   return holdingController.update(req, id);
 }
-
-// DELETE /api/holdings/:id
-// deletes one holding by ID
-export async function DELETE(req: NextRequest, { params }: HoldingRouteContext) {
-  const { id } = await params;
-
-  return holdingController.delete(req, id);
-}
