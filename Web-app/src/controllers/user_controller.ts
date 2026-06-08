@@ -1,14 +1,13 @@
-// this is the user controller that will be used to handle the user logic except for the database interactions, which are handled by the user service but still should pass through the controller for any additional logic or validation before reaching the service
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { userService } from "@/services/user_service";
 
 export const userController = {
 
   getUser: async (req: NextRequest, user_id: string) => {
-    // TODO: replace with real auth when ready
-    // const session = await auth();
-    // const userId = session?.user?.id;
-    const userId = req.headers.get("x-user-id");
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,7 +28,8 @@ export const userController = {
   },
 
   updateUser: async (req: NextRequest, user_id: string) => {
-    const userId = req.headers.get("x-user-id");
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

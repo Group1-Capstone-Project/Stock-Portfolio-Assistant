@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { portfolioService } from "@/services/portfolio_service";
 
 export const portfolioController = {
   getPortfolio: async (req: NextRequest) => {
-    // TODO: replace with real auth when ready
-    // const session = await auth();
-    // const userId = session?.user?.id;
-    const userId = req.headers.get("x-user-id");
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json(
