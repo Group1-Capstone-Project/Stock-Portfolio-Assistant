@@ -9,13 +9,14 @@ export function proxy(request: NextRequest) {
     request.cookies.get("__Secure-next-auth.session-token")?.value // HTTPS/prod
 
   const { pathname } = request.nextUrl
+  const isHomeRoute = pathname === "/"
   const isAuthRoute =
     pathname.startsWith("/login") || pathname.startsWith("/register")
   const isApiAuth = pathname.startsWith("/api/auth")
 
   if (isApiAuth) return NextResponse.next()
 
-  if (!sessionToken && !isAuthRoute) {
+  if (!sessionToken && !isAuthRoute && !isHomeRoute) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
 

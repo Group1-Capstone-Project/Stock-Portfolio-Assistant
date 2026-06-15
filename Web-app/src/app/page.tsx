@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { signOut, useSession } from "next-auth/react";
 import type { Holding } from "@/types/portfolio";
 import DashboardSummary from "@/components/Dashboard/DashboardSummary";
 import HoldingsTable from "@/components/Dashboard/HoldingsTable";
 import AddHoldingForm from "@/components/Dashboard/AddHoldingForm";
-import { holdings as mockHoldings } from "@/data/mockPortfolio";
-
-// this helper calls our own backend route at /api/quote/batch
-// the frontend does not call Finnhub directly
-import { getBatchQuotes, isValidQuote } from "@/lib/stockApi";
 
 import dynamic from "next/dynamic";
 
@@ -26,70 +23,188 @@ const PortfolioHistoryChart = dynamic(
   { ssr: false }
 );
 
+type PortfolioApiHolding = {
+  id: string;
+  ticker: string;
+  shares: number;
+  averageBuyPrice: number;
+  latestPrice: number;
+  createdAt: string;
+};
+
+type PortfolioApiResponse = {
+  holdings: PortfolioApiHolding[];
+};
+
+function mapPortfolioHolding(holding: PortfolioApiHolding): Holding {
+  // the dashboard UI still expects the frontend Holding shape, so normalize
+  // the persisted API payload here instead of spreading conversion logic around
+  const fallbackDate = new Date().toISOString().split("T")[0];
+
+  return {
+    id: holding.id,
+    ticker: holding.ticker,
+    companyName: holding.ticker,
+    shares: Number(holding.shares),
+    price: Number(holding.latestPrice || holding.averageBuyPrice),
+    purchasePrice: Number(holding.averageBuyPrice),
+    purchaseDate: holding.createdAt
+      ? new Date(holding.createdAt).toISOString().split("T")[0]
+      : fallbackDate,
+  };
+}
+
 export default function DashboardPage() {
-  const [holdings, setHoldings] = useState<Holding[]>(mockHoldings);
+  const { status } = useSession();
+  const [holdings, setHoldings] = useState<Holding[]>([]);
 
-  // tracks whether the dashboard is currently refreshing stock prices
-  const [isRefreshingPrices, setIsRefreshingPrices] = useState(false);
+  const [isLoadingPortfolio, setIsLoadingPortfolio] = useState(false);
+  const [isSavingHolding, setIsSavingHolding] = useState(false);
 
-  // stores an error message if quote retrieval fails
-  const [priceError, setPriceError] = useState<string | null>(null);
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
 
-  // when the dashboard first loads, this requests updated prices for the
-  // current mock holdings and replaces the temporary hardcoded price values
-  useEffect(() => {
-    async function refreshInitialPrices() {
-      // use the initial mock holdings here instead of the holdings state
-      // this prevents the effect from rerunning every time setHoldings updates prices
-      const symbols = mockHoldings.map((holding) => holding.ticker);
+  async function loadPortfolio() {
+    try {
+      setIsLoadingPortfolio(true);
+      setPortfolioError(null);
 
-      if (symbols.length === 0) {
+      const response = await fetch("/api/portfolio", { cache: "no-store" });
+
+      if (!response.ok) {
+        setPortfolioError("Unable to load your saved holdings right now.");
         return;
       }
 
-      try {
-        setIsRefreshingPrices(true);
-        setPriceError(null);
-
-        const quotes = await getBatchQuotes(symbols);
-
-        setHoldings((currentHoldings) =>
-          currentHoldings.map((holding) => {
-            const quote = quotes.find(
-              (item) => item.symbol === holding.ticker && isValidQuote(item)
-            );
-
-            // if the API does not return a valid quote for this ticker,
-            // keep the existing holding unchanged so the dashboard still works
-            if (!quote || !isValidQuote(quote)) {
-              return holding;
-            }
-
-            // replace the temporary mock current price with the latest price
-            // returned by the backend Finnhub route
-            return {
-              ...holding,
-              price: quote.currentPrice,
-            };
-          })
-        );
-      } catch {
-        setPriceError("Unable to refresh stock prices right now.");
-      } finally {
-        setIsRefreshingPrices(false);
-      }
+      const data = (await response.json()) as PortfolioApiResponse;
+      const mapped = (data.holdings ?? []).map(mapPortfolioHolding);
+      setHoldings(mapped);
+    } catch {
+      setPortfolioError("Unable to load your saved holdings right now.");
+    } finally {
+      setIsLoadingPortfolio(false);
     }
-
-    refreshInitialPrices();
-  }, []);
-
-  function addHolding(newHolding: Holding) {
-    setHoldings((currentHoldings) => [...currentHoldings, newHolding]);
   }
 
-  function deleteHolding(id: string) {
-    setHoldings((currentHoldings) =>
-      currentHoldings.filter((holding) => holding.id !== id)
+  useEffect(() => {
+    if (status !== "authenticated") {
+      return;
+    }
+    loadPortfolio();
+  }, [status]);
+
+  async function addHolding(newHolding: Holding) {
+    try {
+      setIsSavingHolding(true);
+      setPortfolioError(null);
+
+      const response = await fetch("/api/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ticker: newHolding.ticker,
+          shares: newHolding.shares,
+          price: newHolding.purchasePrice,
+          transactionType: "BUY",
+          transactionDate: `${newHolding.purchaseDate}T00:00:00.000Z`,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorPayload = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+
+        setPortfolioError(
+          errorPayload?.error || "Unable to save this holding right now."
+        );
+        return;
+      }
+
+      await loadPortfolio();
+    } catch {
+      setPortfolioError("Unable to save this holding right now.");
+    } finally {
+      setIsSavingHolding(false);
+    }
+  }
+
+  async function deleteHolding(id: string) {
+    const holding = holdings.find((current) => current.id === id);
+
+    if (!holding) {
+      return;
+    }
+
+    try {
+      setIsSavingHolding(true);
+      setPortfolioError(null);
+
+      const response = await fetch("/api/transactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ticker: holding.ticker,
+          shares: holding.shares,
+          price: holding.price,
+          transactionType: "SELL",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorPayload = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+
+        setPortfolioError(
+          errorPayload?.error || "Unable to delete this holding right now."
+        );
+        return;
+      }
+
+      await loadPortfolio();
+    } catch {
+      setPortfolioError("Unable to delete this holding right now.");
+    } finally {
+      setIsSavingHolding(false);
+    }
+  }
+
+  if (status === "loading") {
+    return (
+      <main className="mx-auto max-w-3xl p-6">
+        <p className="text-sm text-gray-500">Checking session...</p>
+      </main>
+    );
+  }
+
+  if (status === "unauthenticated") {
+    return (
+      <main className="mx-auto flex min-h-[70vh] max-w-3xl items-center p-6">
+        <section className="w-full rounded-xl border bg-white p-8 shadow-sm">
+          <h1 className="text-3xl font-bold text-gray-900">Stock Portfolio Dashboard</h1>
+          <p className="mt-2 text-gray-600">
+            Sign in to access your saved portfolio, holdings, and history.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link
+              href="/login"
+              className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="rounded border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Create account
+            </Link>
+          </div>
+        </section>
+      </main>
     );
   }
 
@@ -101,14 +216,16 @@ export default function DashboardPage() {
           Track holdings, portfolio value, and allocation.
         </p>
 
-        {/* shows when stock prices are refreshing */}
-        {isRefreshingPrices && (
-          <p className="mt-2 text-sm text-gray-500">Refreshing stock prices...</p>
+        {isLoadingPortfolio && (
+          <p className="mt-2 text-sm text-gray-500">Loading saved holdings...</p>
         )}
 
-        {/* shows if price refresh fails */}
-        {priceError && (
-          <p className="mt-2 text-sm text-red-500">{priceError}</p>
+        {isSavingHolding && (
+          <p className="mt-2 text-sm text-gray-500">Saving changes...</p>
+        )}
+
+        {portfolioError && (
+          <p className="mt-2 text-sm text-red-500">{portfolioError}</p>
         )}
       </div>
 
@@ -121,6 +238,16 @@ export default function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <PortfolioChart holdings={holdings} />
         <PortfolioHistoryChart holdings={holdings} />
+      </div>
+
+      <div className="flex justify-center pt-2">
+        <button
+          type="button"
+          className="rounded border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          onClick={() => signOut({ callbackUrl: "/login" })}
+        >
+          Log out
+        </button>
       </div>
     </main>
   );
