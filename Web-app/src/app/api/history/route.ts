@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
 import { fetchCandles, FinnhubApiError } from "@/lib/finnhub";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 type Period = "1D" | "1W" | "1M" | "3M" | "1Y";
 
@@ -14,7 +16,10 @@ const PERIOD_CONFIG: Record<Period, { resolution: string; lookbackDays: number }
 const VALID_PERIODS = Object.keys(PERIOD_CONFIG).join(", ");
 
 export async function GET(request: NextRequest) {
-  // check session once auth is configured
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const symbol = request.nextUrl.searchParams.get("symbol")?.trim().toUpperCase();
   const period = request.nextUrl.searchParams.get("period")?.trim().toUpperCase() as Period | null;

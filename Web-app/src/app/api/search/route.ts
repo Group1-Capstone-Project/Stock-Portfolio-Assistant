@@ -1,8 +1,13 @@
 import { NextRequest } from "next/server";
 import { fetchSearch, FinnhubApiError } from "@/lib/finnhub";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
-  // check session once auth is configured
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const q = request.nextUrl.searchParams.get("q")?.trim();
 
