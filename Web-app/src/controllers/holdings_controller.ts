@@ -1,16 +1,15 @@
-//this controller is responsible for handling the business logic for the holdings API routes.
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { holdingService } from "@/services/holdings_service";
 
 export const holdingController = {
 
   // GET /api/holdings
   getAll: async (req: NextRequest) => {
-    // replace with real auth when ready
-    // const session = await auth();
-    // const userId = session?.user?.id;
-    const userId = req.headers.get("x-user-id");
-    
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
+
     if (!userId) {
       return NextResponse.json(
         { error: "Unauthorized" },
@@ -24,11 +23,8 @@ export const holdingController = {
 
   // GET /api/holdings/:id
   getOne: async (req: NextRequest, id: string) => {
-    // replace with real auth when ready
-    // const session = await auth();
-    // const userId = session?.user?.id;
-
-    const userId = req.headers.get("x-user-id");
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json(
@@ -50,8 +46,9 @@ export const holdingController = {
   },
 
   // PUT /api/holdings/:id
-update: async (req: NextRequest, id: string) => {
-    const userId = req.headers.get("x-user-id");
+  update: async (req: NextRequest, id: string) => {
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json(
