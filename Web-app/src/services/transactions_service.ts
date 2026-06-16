@@ -18,7 +18,8 @@ export const transactionservice = {
   },
 
   // CREATE transaction and update holding automatically
-  createTransaction: async (userId: string, data: {
+  createTransaction: async (
+    userId: string, data: {
     ticker: string;
     shares: number;
     price: number;

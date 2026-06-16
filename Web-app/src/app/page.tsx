@@ -5,13 +5,12 @@ import type { Holding } from "@/types/portfolio";
 import DashboardSummary from "@/components/Dashboard/DashboardSummary";
 import HoldingsTable from "@/components/Dashboard/HoldingsTable";
 import AddHoldingForm from "@/components/Dashboard/AddHoldingForm";
-import { holdings as mockHoldings } from "@/data/mockPortfolio";
-
 // this helper calls our own backend route at /api/quote/batch
 // the frontend does not call Finnhub directly
 import { getBatchQuotes, isValidQuote } from "@/lib/stockApi";
 
 import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
 
 // recharts should only render in the browser because it needs real container dimensions
 // this keeps the chart components unchanged but prevents chart sizing
@@ -27,61 +26,25 @@ const PortfolioHistoryChart = dynamic(
 );
 
 export default function DashboardPage() {
-  const [holdings, setHoldings] = useState<Holding[]>(mockHoldings);
-
   // tracks whether the dashboard is currently refreshing stock prices
   const [isRefreshingPrices, setIsRefreshingPrices] = useState(false);
-
+  const [holdings, setHoldings] = useState<Holding[]>([]);
   // stores an error message if quote retrieval fails
   const [priceError, setPriceError] = useState<string | null>(null);
-
+  const { data: session } = useSession();
   // when the dashboard first loads, this requests updated prices for the
   // current mock holdings and replaces the temporary hardcoded price values
   useEffect(() => {
-    async function refreshInitialPrices() {
-      // use the initial mock holdings here instead of the holdings state
-      // this prevents the effect from rerunning every time setHoldings updates prices
-      const symbols = mockHoldings.map((holding) => holding.ticker);
-
-      if (symbols.length === 0) {
-        return;
-      }
-
-      try {
-        setIsRefreshingPrices(true);
-        setPriceError(null);
-
-        const quotes = await getBatchQuotes(symbols);
-
-        setHoldings((currentHoldings) =>
-          currentHoldings.map((holding) => {
-            const quote = quotes.find(
-              (item) => item.symbol === holding.ticker && isValidQuote(item)
-            );
-
-            // if the API does not return a valid quote for this ticker,
-            // keep the existing holding unchanged so the dashboard still works
-            if (!quote || !isValidQuote(quote)) {
-              return holding;
-            }
-
-            // replace the temporary mock current price with the latest price
-            // returned by the backend Finnhub route
-            return {
-              ...holding,
-              price: quote.currentPrice,
-            };
-          })
-        );
-      } catch {
-        setPriceError("Unable to refresh stock prices right now.");
-      } finally {
-        setIsRefreshingPrices(false);
-      }
+    async function fetchPortfolio() {
+      if (!session?.user?.id) return;
+      const response = await fetch("/api/portfolio", {
+        headers: { "x-user-id": session.user.id }
+      });
+      const data = await response.json();
+      setHoldings(data.holdings);
     }
-
-    refreshInitialPrices();
-  }, []);
+    fetchPortfolio();
+  }, [session]);
 
   function addHolding(newHolding: Holding) {
     setHoldings((currentHoldings) => [...currentHoldings, newHolding]);

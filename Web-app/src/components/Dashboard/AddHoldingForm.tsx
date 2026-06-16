@@ -1,5 +1,6 @@
 "use client";
 
+import { useSession } from "next-auth/react";
 import { useState } from "react";
 import type { Holding } from "@/types/portfolio";
 
@@ -12,6 +13,7 @@ function getTodayDate() {
 }
 
 export default function AddHoldingForm({ onAddHolding }: AddHoldingFormProps) {
+  const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [ticker, setTicker] = useState("");
   const [shares, setShares] = useState("");
@@ -25,7 +27,7 @@ export default function AddHoldingForm({ onAddHolding }: AddHoldingFormProps) {
     setPurchaseDate(getTodayDate());
   }
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!ticker || !shares || !purchasePrice || !purchaseDate) return;
@@ -39,6 +41,21 @@ export default function AddHoldingForm({ onAddHolding }: AddHoldingFormProps) {
       purchasePrice: Number(purchasePrice),
       purchaseDate,
     };
+
+    await fetch("/api/transactions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-user-id": session?.user?.id ?? ""
+      },
+      body: JSON.stringify({
+        ticker: ticker.toUpperCase(),
+        shares: Number(shares),
+        price: Number(purchasePrice),
+        transactionType: "BUY",
+        transactionDate: purchaseDate
+      })
+    });
 
     onAddHolding(newHolding);
     resetForm();
