@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { TransactionType } from "@prisma/client";
+import { fetchQuote } from "@/lib/finnhub";
 
 export const transactionservice = {
 
@@ -26,9 +27,30 @@ export const transactionservice = {
     transactionType: TransactionType;
     transactionDate?: Date;
   }) => {
+    const ticker = data.ticker?.trim().toUpperCase();
+
+    if (!ticker) {
+      throw new Error("Ticker is required");
+    }
+
+    if (!Number.isFinite(data.shares) || data.shares <= 0) {
+      throw new Error("Shares must be greater than zero");
+    }
+
+    if (!Number.isFinite(data.price) || data.price <= 0) {
+      throw new Error("Price must be greater than zero");
+    }
+
+    // For BUY orders, validate ticker against live quote lookup so fake symbols are rejected.
+    if (data.transactionType === "BUY") {
+      const quote = await fetchQuote(ticker);
+      if (!quote) {
+        throw new Error("Ticker not found");
+      }
+    }
 
     const existingHolding = await prisma.holding.findFirst({
-      where: { userId, ticker: data.ticker }
+      where: { userId, ticker }
     });
 
     if (data.transactionType === "BUY") {
@@ -54,7 +76,7 @@ export const transactionservice = {
         await prisma.holding.create({
           data: {
             userId,
-            ticker: data.ticker,
+            ticker,
             shares: data.shares,
             averageBuyPrice: data.price
           }
@@ -89,7 +111,7 @@ export const transactionservice = {
 
     // save the transaction record
     return await prisma.transaction.create({
-      data: { ...data, userId }
+      data: { ...data, ticker, userId }
     });
   },
 

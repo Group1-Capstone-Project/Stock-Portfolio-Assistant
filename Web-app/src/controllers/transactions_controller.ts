@@ -53,9 +53,26 @@ export const transactionController = {
       );
     }
 
+<<<<<<< HEAD
     const body = await req.json();
     const transaction = await transactionservice.createTransaction(userId, body);
     return NextResponse.json(transaction, { status: 201 });
+=======
+    try {
+      const body = await req.json();
+      const transaction = await transactionservice.createTransaction(userId, body);
+      return NextResponse.json(transaction, { status: 201 });
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : "Unable to create transaction";
+
+      return NextResponse.json(
+        { error: message },
+        { status: 400 }
+      );
+    }
+>>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
   },
 
   delete: async (req: NextRequest, id: string) => {

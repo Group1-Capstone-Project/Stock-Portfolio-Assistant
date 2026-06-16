@@ -1,5 +1,6 @@
 "use client"
 
+<<<<<<< HEAD
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -19,12 +20,77 @@ export default function LoginPage() {
     const result = await signIn("credentials", {
       email: form.get("email"),
       password: form.get("password"),
+=======
+import { Suspense, useState } from "react"
+import { signIn } from "next-auth/react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
+
+// it was split out because Next.js requires any component using
+// useSearchParams() to be wrapped in a Suspense boundary during build
+function LoginPageContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string
+    password?: string
+  }>({})
+  const [pending, setPending] = useState(false)
+
+  const oauthError = searchParams.get("error")
+
+  // next auth sends provider failures back on the query string after redirect
+  // so surface that here instead of dropping the user back on login silently
+  const oauthErrorMessage = oauthError
+    ? "Google sign-in failed. Please verify OAuth setup and try again."
+    : null
+
+  async function handleCredentials(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+
+    const form = new FormData(e.currentTarget)
+    const email = String(form.get("email") ?? "").trim().toLowerCase()
+    const password = String(form.get("password") ?? "")
+
+    const nextFieldErrors: { email?: string; password?: string } = {}
+
+    if (!email) {
+      nextFieldErrors.email = "Email is required."
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      nextFieldErrors.email = "Please enter a valid email address."
+    }
+
+    if (!password) {
+      nextFieldErrors.password = "Password is required."
+    } else if (password.length < 8) {
+      nextFieldErrors.password = "Password must be at least 8 characters."
+    }
+
+    setFieldErrors(nextFieldErrors)
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setError(null)
+      return
+    }
+
+    setPending(true)
+    setError(null)
+
+    const result = await signIn("credentials", {
+      email,
+      password,
+>>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
       redirect: false,
     })
 
     setPending(false)
 
+<<<<<<< HEAD
     if (result?.error) {
+=======
+    if (!result || result.error || !result.ok) {
+>>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
       setError("Invalid email or password.")
     } else {
       router.push("/")
@@ -36,6 +102,12 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm space-y-6 rounded-xl bg-white p-8 shadow-md">
         <div>
+<<<<<<< HEAD
+=======
+          <p className="text-sm font-semibold uppercase tracking-wide text-blue-600">
+            Stock Portfolio Asistant
+          </p>
+>>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
           <h1 className="text-2xl font-bold text-gray-900">Sign in</h1>
           <p className="mt-1 text-sm text-gray-500">
             Access your stock portfolio dashboard.
@@ -43,6 +115,13 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleCredentials} className="space-y-4">
+<<<<<<< HEAD
+=======
+          {oauthErrorMessage && (
+            <p className="text-sm text-red-600">{oauthErrorMessage}</p>
+          )}
+
+>>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
           <div>
             <label
               htmlFor="email"
@@ -58,6 +137,12 @@ export default function LoginPage() {
               autoComplete="email"
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+<<<<<<< HEAD
+=======
+            {fieldErrors.email && (
+              <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
+            )}
+>>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
           </div>
 
           <div>
@@ -75,11 +160,22 @@ export default function LoginPage() {
               autoComplete="current-password"
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+<<<<<<< HEAD
           </div>
 
           {error && (
             <p className="text-sm text-red-600">{error}</p>
           )}
+=======
+            {fieldErrors.password && (
+              <p className="mt-1 text-xs text-red-600">
+                {fieldErrors.password}
+              </p>
+            )}
+          </div>
+
+          {error && <p className="text-sm text-red-600">{error}</p>}
+>>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
 
           <button
             type="submit"
@@ -126,7 +222,14 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500">
           Don&apos;t have an account?{" "}
+<<<<<<< HEAD
           <Link href="/register" className="font-medium text-blue-600 hover:underline">
+=======
+          <Link
+            href="/register"
+            className="font-medium text-blue-600 hover:underline"
+          >
+>>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
             Register
           </Link>
         </p>
@@ -134,3 +237,20 @@ export default function LoginPage() {
     </main>
   )
 }
+<<<<<<< HEAD
+=======
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+          <p className="text-sm text-gray-500">Loading...</p>
+        </main>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
+  )
+}
+>>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
