@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState } from "react"
 import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
-export default function LoginPage() {
+// it was split out because Next.js requires any component using
+// useSearchParams() to be wrapped in a Suspense boundary during build
+function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [error, setError] = useState<string | null>(null)
@@ -17,7 +18,8 @@ export default function LoginPage() {
   const [pending, setPending] = useState(false)
 
   const oauthError = searchParams.get("error")
-  // next-auth sends provider failures back on the query string after redirect,
+
+  // next auth sends provider failures back on the query string after redirect
   // so surface that here instead of dropping the user back on login silently
   const oauthErrorMessage = oauthError
     ? "Google sign-in failed. Please verify OAuth setup and try again."
@@ -124,13 +126,13 @@ export default function LoginPage() {
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
             {fieldErrors.password && (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
+              <p className="mt-1 text-xs text-red-600">
+                {fieldErrors.password}
+              </p>
             )}
           </div>
 
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button
             type="submit"
@@ -177,11 +179,28 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500">
           Don&apos;t have an account?{" "}
-          <Link href="/register" className="font-medium text-blue-600 hover:underline">
+          <Link
+            href="/register"
+            className="font-medium text-blue-600 hover:underline"
+          >
             Register
           </Link>
         </p>
       </div>
     </main>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+          <p className="text-sm text-gray-500">Loading...</p>
+        </main>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   )
 }
