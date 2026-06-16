@@ -46,6 +46,14 @@ export default function HoldingsTable({
           </thead>
 
           <tbody>
+            {holdings.length === 0 && (
+              <tr>
+                <td className="px-4 py-6 text-sm text-gray-500" colSpan={8}>
+                  You have no holdings.
+                </td>
+              </tr>
+            )}
+
             {Object.entries(groupedHoldings).map(([ticker, lots]) => {
               const totalShares = lots.reduce(
                 (total, lot) => total + lot.shares,
@@ -100,24 +108,24 @@ export default function HoldingsTable({
                       const lotReturnPercent = (lotGainLoss / lotCost) * 100;
 
                       return (
-                        <tr key={lot.id} className="border-b bg-gray-50">
-                          <td className="px-4 py-2 pl-8">
+                        <tr key={lot.id} className="border-b bg-gray-800">
+                          <td className="px-4 py-2 pl-8 text-gray-200">
                             Lot from {lot.purchaseDate}
                           </td>
-                          <td className="px-4 py-2">{lot.shares}</td>
-                          <td className="px-4 py-2">
+                          <td className="px-4 py-2 text-gray-200">{lot.shares}</td>
+                          <td className="px-4 py-2 text-gray-200">
                             ${lot.purchasePrice.toFixed(2)}
                           </td>
-                          <td className="px-4 py-2">
+                          <td className="px-4 py-2 text-gray-200">
                             ${lot.price.toFixed(2)}
                           </td>
-                          <td className="px-4 py-2">
+                          <td className="px-4 py-2 text-gray-200">
                             ${lotValue.toFixed(2)}
                           </td>
-                          <td className="px-4 py-2">
+                          <td className="px-4 py-2 text-gray-200">
                             ${lotGainLoss.toFixed(2)}
                           </td>
-                          <td className="px-4 py-2">
+                          <td className="px-4 py-2 text-gray-200">
                             {lotReturnPercent.toFixed(2)}%
                           </td>
                           <td className="px-4 py-2">
