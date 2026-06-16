@@ -7,7 +7,6 @@ import { prisma } from "@/lib/prisma"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "database" },
   session: { strategy: "jwt" },
   providers: [
     GoogleProvider({
