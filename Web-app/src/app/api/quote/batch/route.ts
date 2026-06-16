@@ -1,12 +1,17 @@
 import { NextRequest } from "next/server";
 import { fetchQuote, FinnhubApiError, StockQuote } from "@/lib/finnhub";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const MAX_SYMBOLS = 20;
 
 type BatchQuoteItem = StockQuote | { symbol: string; notFound: true };
 
 export async function GET(request: NextRequest) {
-  // check session once auth is configured
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const raw = request.nextUrl.searchParams.get("symbols")?.trim();
 
