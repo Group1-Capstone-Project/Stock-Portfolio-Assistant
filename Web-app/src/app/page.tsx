@@ -9,22 +9,8 @@ import type { Holding } from "@/types/portfolio";
 import DashboardSummary from "@/components/Dashboard/DashboardSummary";
 import HoldingsTable from "@/components/Dashboard/HoldingsTable";
 import AddHoldingForm from "@/components/Dashboard/AddHoldingForm";
-<<<<<<< HEAD
-// this helper calls our own backend route at /api/quote/batch
-// the frontend does not call Finnhub directly
-import { getBatchQuotes, isValidQuote } from "@/lib/stockApi";
-
-import dynamic from "next/dynamic";
-import { useSession } from "next-auth/react";
-
-// recharts should only render in the browser because it needs real container dimensions
-// this keeps the chart components unchanged but prevents chart sizing
-// warnings during build/prerender
-const PortfolioChart = dynamic(
-=======
 
 const PortfolioAllocationChart = dynamic(
->>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
   () => import("@/components/Dashboard/PortfolioChart"),
   { ssr: false }
 );
@@ -66,27 +52,6 @@ function mapPortfolioHolding(holding: PortfolioApiHolding): Holding {
 }
 
 export default function DashboardPage() {
-<<<<<<< HEAD
-  // tracks whether the dashboard is currently refreshing stock prices
-  const [isRefreshingPrices, setIsRefreshingPrices] = useState(false);
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  // stores an error message if quote retrieval fails
-  const [priceError, setPriceError] = useState<string | null>(null);
-  const { data: session } = useSession();
-  // when the dashboard first loads, this requests updated prices for the
-  // current mock holdings and replaces the temporary hardcoded price values
-  useEffect(() => {
-    async function fetchPortfolio() {
-      if (!session?.user?.id) return;
-      const response = await fetch("/api/portfolio", {
-        headers: { "x-user-id": session.user.id }
-      });
-      const data = await response.json();
-      setHoldings(data.holdings);
-    }
-    fetchPortfolio();
-  }, [session]);
-=======
   const { status } = useSession();
 
   const [holdings, setHoldings] = useState<Holding[]>([]);
@@ -141,7 +106,6 @@ export default function DashboardPage() {
     }
 
     void loadInitialPortfolio();
->>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
 
     return () => {
       ignore = true;

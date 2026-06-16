@@ -7,11 +7,8 @@ import { prisma } from "@/lib/prisma"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-<<<<<<< HEAD
   session: { strategy: "database" },
-=======
   session: { strategy: "jwt" },
->>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
   providers: [
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID!,
@@ -25,25 +22,16 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null
 
-<<<<<<< HEAD
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-=======
         const email = credentials.email.trim().toLowerCase()
         const password = credentials.password
 
         const user = await prisma.user.findUnique({
           where: { email },
->>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
         })
 
         if (!user?.password) return null
 
-<<<<<<< HEAD
-        const valid = await bcrypt.compare(credentials.password, user.password)
-=======
         const valid = await bcrypt.compare(password, user.password)
->>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
         return valid ? user : null
       },
     }),
@@ -52,10 +40,6 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
   },
   callbacks: {
-<<<<<<< HEAD
-    session({ session, user }) {
-      session.user.id = user.id
-=======
     jwt({ token, user }) {
       if (user) {
         token.id = user.id
@@ -66,7 +50,6 @@ export const authOptions: NextAuthOptions = {
       if (session.user && token.id) {
         session.user.id = token.id as string
       }
->>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
       return session
     },
   },
