@@ -19,6 +19,8 @@ export const portfolioService = {
         // get latest price from Finnhub
         const quote = await fetchQuote(holding.ticker);
         const latestPrice = quote?.currentPrice ?? Number(holding.latestPrice) ?? 0;
+        const dayChange = quote?.change ?? 0;
+        const dayChangePercent = quote?.percentChange ?? 0;
 
         const shares = Number(holding.shares);
         const averageBuyPrice = Number(holding.averageBuyPrice);
@@ -30,6 +32,8 @@ export const portfolioService = {
         return {
           ...holding,
           latestPrice,
+          dayChange,
+          dayChangePercent,
           currentValue,
           profitLoss,
           profitLossPercent: Math.round(profitLossPercent * 100) / 100
