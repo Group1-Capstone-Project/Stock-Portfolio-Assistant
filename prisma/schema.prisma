@@ -5,7 +5,7 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
 }
 
 datasource db {
@@ -74,7 +74,8 @@ model Holding {
   averageBuyPrice Decimal  @db.Decimal(18, 4)
   latestPrice     Decimal? @db.Decimal(18, 4)
   latestPriceAt   DateTime?
-
+  purchaseDate    DateTime?
+  
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   transactions Transaction[]
@@ -82,7 +83,7 @@ model Holding {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([userId, ticker])
+  @@index([userId, ticker])
 }
 
 model Transaction {

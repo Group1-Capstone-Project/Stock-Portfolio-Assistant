@@ -26,6 +26,7 @@ type PortfolioApiHolding = {
   latestPrice: number;
   dayChange?: number;
   dayChangePercent?: number;
+  purchaseDate?: string | null;
   createdAt: string;
 };
 
@@ -52,9 +53,11 @@ function mapPortfolioHolding(holding: PortfolioApiHolding): Holding {
     shares: Number(holding.shares),
     price: Number(holding.latestPrice || holding.averageBuyPrice),
     purchasePrice: Number(holding.averageBuyPrice),
-    purchaseDate: holding.createdAt
-      ? new Date(holding.createdAt).toISOString().split("T")[0]
-      : fallbackDate,
+    purchaseDate: holding.purchaseDate
+      ? new Date(holding.purchaseDate).toISOString().split("T")[0]
+      : holding.createdAt
+        ? new Date(holding.createdAt).toISOString().split("T")[0]
+        : fallbackDate,
   };
 }
 
@@ -121,41 +124,8 @@ export default function DashboardPage() {
   }, [status]);
 
   async function addHolding(newHolding: Holding) {
-    try {
-      setIsSavingHolding(true);
-      setPortfolioError(null);
-
-      const response = await fetch("/api/transactions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ticker: newHolding.ticker,
-          shares: newHolding.shares,
-          price: newHolding.purchasePrice,
-          transactionType: "BUY",
-          transactionDate: `${newHolding.purchaseDate}T00:00:00.000Z`,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorPayload = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-
-        setPortfolioError(
-          errorPayload?.error || "Unable to save this holding right now."
-        );
-        return;
-      }
-
-      await loadPortfolio();
-    } catch {
-      setPortfolioError("Unable to save this holding right now.");
-    } finally {
-      setIsSavingHolding(false);
-    }
+    setHoldings((current) => [...current, newHolding]);
+    await loadPortfolio();
   }
 
   async function deleteHolding(id: string) {
@@ -178,6 +148,7 @@ export default function DashboardPage() {
           ticker: holding.ticker,
           shares: holding.shares,
           price: holding.price,
+          holdingId: id,
           transactionType: "SELL",
         }),
       });

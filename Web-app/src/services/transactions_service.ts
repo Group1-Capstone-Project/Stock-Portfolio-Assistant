@@ -2,34 +2,41 @@ import { prisma } from "@/lib/prisma";
 import { TransactionType } from "@prisma/client";
 import { fetchQuote } from "@/lib/finnhub";
 
+type TransactionInput = {
+  ticker: string;
+  shares: number;
+  price: number;
+  transactionType: TransactionType;
+  transactionDate?: Date | string;
+  holdingId?: string;
+};
+
 export const transactionservice = {
-
-  // GET all transactions for this user
   findAllTransactions: async (userId: string) => {
-    return await prisma.transaction.findMany({
-      where: { userId }
+    return prisma.transaction.findMany({
+      where: { userId },
+      orderBy: { transactionDate: "desc" },
     });
   },
 
-  // GET one transaction for this user
   findOneTransaction: async (id: string, userId: string) => {
-    return await prisma.transaction.findFirst({
-      where: { id, userId }
+    return prisma.transaction.findFirst({
+      where: { id, userId },
     });
   },
 
-  // CREATE transaction and update holding automatically
-  createTransaction: async (userId: string, data: {
-    ticker: string;
-    shares: number;
-    price: number;
-    transactionType: TransactionType;
-    transactionDate?: Date;
-  }) => {
+  createTransaction: async (userId: string, data: TransactionInput) => {
     const ticker = data.ticker?.trim().toUpperCase();
+    const transactionDate = data.transactionDate
+      ? new Date(data.transactionDate)
+      : new Date();
 
     if (!ticker) {
       throw new Error("Ticker is required");
+    }
+
+    if (!["BUY", "SELL"].includes(data.transactionType)) {
+      throw new Error("Transaction type must be BUY or SELL");
     }
 
     if (!Number.isFinite(data.shares) || data.shares <= 0) {
@@ -40,85 +47,112 @@ export const transactionservice = {
       throw new Error("Price must be greater than zero");
     }
 
-    // For BUY orders, validate ticker against live quote lookup so fake symbols are rejected.
+    if (data.shares > 10000) {
+      throw new Error("Shares cannot exceed 10,000 per transaction");
+    }
+
+    if (data.price > 1000000) {
+      throw new Error("Price per share cannot exceed $1,000,000");
+    }
+
+    if (Number.isNaN(transactionDate.getTime())) {
+      throw new Error("Transaction date is invalid");
+    }
+
+    if (transactionDate.getTime() > Date.now()) {
+      throw new Error("Transaction date cannot be in the future");
+    }
+
     if (data.transactionType === "BUY") {
       const quote = await fetchQuote(ticker);
+
       if (!quote) {
         throw new Error("Ticker not found");
       }
     }
 
-    const existingHolding = await prisma.holding.findFirst({
-      where: { userId, ticker }
-    });
-
-    if (data.transactionType === "BUY") {
-
-      if (existingHolding) {
-        // update existing holding
-        const totalShares = Number(existingHolding.shares) + data.shares;
-        const newAverage = (
-          (Number(existingHolding.shares) * Number(existingHolding.averageBuyPrice)) +
-          (data.shares * data.price)
-        ) / totalShares;
-
-        await prisma.holding.update({
-          where: { id: existingHolding.id },
-          data: {
-            shares: totalShares,
-            averageBuyPrice: newAverage
-          }
-        });
-
-      } else {
-        // create new holding
-        await prisma.holding.create({
+    // Updating the holding and creating its transaction must either both
+    // succeed or both fail, so they are performed in one database transaction.
+    return prisma.$transaction(async (tx) => {
+      if (data.transactionType === "BUY") {
+        const holding = await tx.holding.create({
           data: {
             userId,
             ticker,
             shares: data.shares,
-            averageBuyPrice: data.price
-          }
+            averageBuyPrice: data.price,
+            purchaseDate: transactionDate,
+          },
+        });
+
+        return tx.transaction.create({
+          data: {
+            userId,
+            holdingId: holding.id,
+            ticker,
+            shares: data.shares,
+            price: data.price,
+            transactionType: "BUY",
+            transactionDate,
+          },
         });
       }
 
-    } else if (data.transactionType === "SELL") {
-
-      if (!existingHolding) {
-        throw new Error("Cannot sell a stock you do not own");
+      if (!data.holdingId) {
+        throw new Error("Holding ID is required when selling");
       }
 
-      const remainingShares = Number(existingHolding.shares) - data.shares;
+      const holding = await tx.holding.findFirst({
+        where: {
+          id: data.holdingId,
+          userId,
+        },
+      });
+
+      if (!holding) {
+        throw new Error("Holding not found");
+      }
+
+      if (holding.ticker !== ticker) {
+        throw new Error("Holding does not match the requested ticker");
+      }
+
+      const remainingShares = Number(holding.shares) - data.shares;
 
       if (remainingShares < 0) {
         throw new Error("Cannot sell more shares than you own");
       }
 
+      const transaction = await tx.transaction.create({
+        data: {
+          userId,
+          holdingId: holding.id,
+          ticker,
+          shares: data.shares,
+          price: data.price,
+          transactionType: "SELL",
+          transactionDate,
+        },
+      });
+
       if (remainingShares === 0) {
-        // delete holding if no shares left
-        await prisma.holding.delete({
-          where: { id: existingHolding.id }
+        await tx.holding.delete({
+          where: { id: holding.id },
         });
       } else {
-        // update holding with remaining shares
-        await prisma.holding.update({
-          where: { id: existingHolding.id },
-          data: { shares: remainingShares }
+        await tx.holding.update({
+          where: { id: holding.id },
+          data: { shares: remainingShares },
         });
       }
-    }
 
-    // save the transaction record
-    return await prisma.transaction.create({
-      data: { ...data, ticker, userId }
+      return transaction;
     });
   },
 
-  // DELETE a transaction
   deleteTransaction: async (id: string, userId: string) => {
-    return await prisma.transaction.deleteMany({
-      where: { id, userId }
+    return prisma.transaction.deleteMany({
+      where: { id, userId },
     });
   },
-
 };

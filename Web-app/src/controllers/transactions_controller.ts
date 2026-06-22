@@ -53,6 +53,7 @@ export const transactionController = {
       );
     }
 
+    
     try {
       const body = await req.json();
       const transaction = await transactionservice.createTransaction(userId, body);
@@ -79,7 +80,7 @@ export const transactionController = {
         { status: 401 }
       );
     }
-
+    
     await transactionservice.deleteTransaction(id, userId);
     return NextResponse.json({ message: "Transaction deleted" }, { status: 200 });
   }
