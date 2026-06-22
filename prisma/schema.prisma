@@ -75,15 +75,14 @@ model Holding {
   averageBuyPrice Decimal  @db.Decimal(18, 4)
   latestPrice     Decimal? @db.Decimal(18, 4)
   latestPriceAt   DateTime?
-
+  purchaseDate    DateTime?
+  
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   transactions Transaction[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@unique([userId, ticker])
 }
 
 model Transaction {
