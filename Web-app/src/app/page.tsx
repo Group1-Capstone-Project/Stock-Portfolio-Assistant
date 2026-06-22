@@ -52,7 +52,7 @@ function mapPortfolioHolding(holding: PortfolioApiHolding): Holding {
 }
 
 export default function DashboardPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [portfolioLoadStatus, setPortfolioLoadStatus] =
@@ -76,7 +76,7 @@ export default function DashboardPage() {
 
     async function loadInitialPortfolio() {
       try {
-        const response = await fetch("/api/portfolio", { cache: "no-store" });
+        const response = await fetch("/api/portfolio", { cache: "no-store", headers: { "x-user-id": session?.user?.id ?? "" } }); // added user ID header for debugging
 
         // reacts recommended fetch pattern is to ignore stale async responses
         // during cleanup so an old request cannot update state after navigation
@@ -114,7 +114,7 @@ export default function DashboardPage() {
 
   async function loadPortfolio() {
     try {
-      const response = await fetch("/api/portfolio", { cache: "no-store" });
+      const response = await fetch("/api/portfolio", { cache: "no-store", headers: { "x-user-id": session?.user?.id ?? "" } }); // added user ID header for debugging
 
       if (!response.ok) {
         setPortfolioError("Unable to load your saved holdings right now.");
@@ -135,41 +135,11 @@ export default function DashboardPage() {
   }
 
   async function addHolding(newHolding: Holding) {
-    try {
-      setIsSavingHolding(true);
-      setPortfolioError(null);
+    // show instantly in UI
+    setHoldings((current) => [...current, newHolding]);
 
-      const response = await fetch("/api/transactions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ticker: newHolding.ticker,
-          shares: newHolding.shares,
-          price: newHolding.purchasePrice,
-          transactionType: "BUY",
-          transactionDate: `${newHolding.purchaseDate}T00:00:00.000Z`,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorPayload = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-
-        setPortfolioError(
-          errorPayload?.error || "Unable to save this holding right now."
-        );
-        return;
-      }
-
-      await loadPortfolio();
-    } catch {
-      setPortfolioError("Unable to save this holding right now.");
-    } finally {
-      setIsSavingHolding(false);
-    }
+    // reload from API in background to get real prices from Finnhub
+    await loadPortfolio();
   }
 
   async function deleteHolding(id: string) {
@@ -187,12 +157,15 @@ export default function DashboardPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-user-id": session?.user?.id ?? "" // added user ID header for debugging
         },
         body: JSON.stringify({
           ticker: holding.ticker,
           shares: holding.shares,
           price: holding.price,
-          transactionType: "SELL",
+          //added holding ID
+          holdingId: id,
+          transactionType: "SELL"
         }),
       });
 
