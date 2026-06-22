@@ -4,7 +4,6 @@ import { fetchQuote } from "@/lib/finnhub";
 export const portfolioService = {
   getPortfolio: async (userId: string) => {
 
-    // get all holdings for this user
     const holdings = await prisma.holding.findMany({
       where: { userId }
     });
@@ -13,10 +12,8 @@ export const portfolioService = {
       return { holdings: [], totalValue: 0, totalProfitLoss: 0 };
     }
 
-    // calculate profit/loss for each holding
     const holdingsWithStats = await Promise.all(
       holdings.map(async (holding) => {
-        // get latest price from Finnhub
         const quote = await fetchQuote(holding.ticker);
         const latestPrice = quote?.currentPrice ?? Number(holding.latestPrice) ?? 0;
 
@@ -29,20 +26,23 @@ export const portfolioService = {
 
         return {
           ...holding,
+          shares,
+          averageBuyPrice,
           latestPrice,
           currentValue,
           profitLoss,
-          profitLossPercent: Math.round(profitLossPercent * 100) / 100
+          profitLossPercent: Math.round(profitLossPercent * 100) / 100,
+          createdAt: holding.purchaseDate
+            ? holding.purchaseDate.toISOString()
+            : holding.createdAt.toISOString()
         };
       })
     );
 
-    // calculate total portfolio value
     const totalValue = holdingsWithStats.reduce(
       (sum, h) => sum + h.currentValue, 0
     );
 
-    // calculate total profit/loss
     const totalProfitLoss = holdingsWithStats.reduce(
       (sum, h) => sum + h.profitLoss, 0
     );

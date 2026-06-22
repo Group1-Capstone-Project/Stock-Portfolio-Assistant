@@ -16,6 +16,7 @@ export const portfolioController = {
     }
 
     const portfolio = await portfolioService.getPortfolio(userId);
+    console.log("Portfolio response:", JSON.stringify(portfolio.holdings[0]));
     return NextResponse.json(portfolio, { status: 200 });
   }
 };

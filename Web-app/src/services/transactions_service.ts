@@ -26,6 +26,7 @@ export const transactionservice = {
     price: number;
     transactionType: TransactionType;
     transactionDate?: Date;
+    holdingId?: string;
   }) => {
     const ticker = data.ticker?.trim().toUpperCase();
 
@@ -40,6 +41,18 @@ export const transactionservice = {
     if (!Number.isFinite(data.price) || data.price <= 0) {
       throw new Error("Price must be greater than zero");
     }
+// set restrictions on the data
+    if (data.shares > 10000) {
+      throw new Error("Shares cannot exceed 10,000 per transaction");
+    }
+
+    if (data.price > 1000000) {
+      throw new Error("Price per share cannot exceed $1,000,000");
+    }
+
+    if (data.transactionDate && new Date(data.transactionDate) > new Date()) {
+      throw new Error("Transaction date cannot be in the future");
+    }
 
     // For BUY orders, validate ticker against live quote lookup so fake symbols are rejected.
     if (data.transactionType === "BUY") {
@@ -48,42 +61,46 @@ export const transactionservice = {
         throw new Error("Ticker not found");
       }
     }
-
-    const existingHolding = await prisma.holding.findFirst({
-      where: { userId, ticker }
-    });
-
+    
     if (data.transactionType === "BUY") {
-
-      if (existingHolding) {
-        // update existing holding
-        const totalShares = Number(existingHolding.shares) + data.shares;
-        const newAverage = (
-          (Number(existingHolding.shares) * Number(existingHolding.averageBuyPrice)) +
-          (data.shares * data.price)
-        ) / totalShares;
-
-        await prisma.holding.update({
-          where: { id: existingHolding.id },
-          data: {
-            shares: totalShares,
-            averageBuyPrice: newAverage
+      // check if identical transaction are created in last 5 seconds
+      const recentDuplicate = await prisma.transaction.findFirst({
+        where: {
+          userId,
+          ticker,
+          shares: data.shares,
+          price: data.price,
+          transactionType: "BUY",
+          createdAt: {
+            gte: new Date(Date.now() - 5000)
           }
-        });
+        }
+      });
 
-      } else {
-        // create new holding
-        await prisma.holding.create({
-          data: {
-            userId,
-            ticker,
-            shares: data.shares,
-            averageBuyPrice: data.price
-          }
-        });
+      if (recentDuplicate) {
+        throw new Error("Duplicate transaction detected");
       }
 
+      await prisma.holding.create({
+        data: {
+          userId,
+          ticker,
+          shares: data.shares,
+          averageBuyPrice: data.price,
+          purchaseDate: data.transactionDate  //saves the users chosen date
+            ? new Date(data.transactionDate)
+            : new Date()
+        }
+      });
+
     } else if (data.transactionType === "SELL") {
+
+      const existingHolding = await prisma.holding.findFirst({
+        where: { 
+          id: data.holdingId,
+          userId
+       }
+    });
 
       if (!existingHolding) {
         throw new Error("Cannot sell a stock you do not own");
@@ -111,7 +128,16 @@ export const transactionservice = {
 
     // save the transaction record
     return await prisma.transaction.create({
-      data: { ...data, ticker, userId }
+      data: { 
+      ticker,
+      userId,
+      shares: data.shares,
+      price: data.price,
+      transactionType: data.transactionType,
+      transactionDate: data.transactionDate 
+        ? new Date(data.transactionDate) 
+        : new Date()
+      }
     });
   },
 

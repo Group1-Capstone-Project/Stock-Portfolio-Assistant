@@ -53,13 +53,10 @@ export const transactionController = {
       );
     }
 
-<<<<<<< HEAD
-    const body = await req.json();
-    const transaction = await transactionservice.createTransaction(userId, body);
-    return NextResponse.json(transaction, { status: 201 });
-=======
+    
     try {
       const body = await req.json();
+      console.log("Transaction body received:", JSON.stringify(body));
       const transaction = await transactionservice.createTransaction(userId, body);
       return NextResponse.json(transaction, { status: 201 });
     } catch (error) {
@@ -72,7 +69,6 @@ export const transactionController = {
         { status: 400 }
       );
     }
->>>>>>> f8c6c656c0c00efeaf809e3425359a8606b7b04e
   },
 
   delete: async (req: NextRequest, id: string) => {
@@ -85,7 +81,7 @@ export const transactionController = {
         { status: 401 }
       );
     }
-
+    
     await transactionservice.deleteTransaction(id, userId);
     return NextResponse.json({ message: "Transaction deleted" }, { status: 200 });
   }
